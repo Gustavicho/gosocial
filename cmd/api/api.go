@@ -5,16 +5,26 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Gustavicho/gosocial/internal/store"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
 
 type application struct {
 	config config
+	store  store.Store
 }
 
 type config struct {
 	addr string
+	db   dbConfig
+}
+
+type dbConfig struct {
+	dsn          string
+	maxOpenConns int
+	maxIdleConns int
+	maxIdleTime  string
 }
 
 func (app *application) mount() http.Handler {
