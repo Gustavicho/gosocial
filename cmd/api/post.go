@@ -13,7 +13,7 @@ type CreatePostPayload struct {
 	Tags    []string `json:"tags"`
 }
 
-func (app *application) handlerCreatePost(w http.ResponseWriter, r *http.Request) {
+func (app *application) createPostHandler(w http.ResponseWriter, r *http.Request) {
 	var payload CreatePostPayload
 
 	if err := readJSON(w, r, &payload); err != nil {
