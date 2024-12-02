@@ -1,0 +1,3 @@
+ALTER TABLE posts
+  ALTER COLUMN updated_at SET NOT NULL,
+  ALTER COLUMN updated_at SET DEFAULT now();
