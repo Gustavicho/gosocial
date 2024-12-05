@@ -10,9 +10,8 @@ import (
 )
 
 type CreatePostPayload struct {
-	UserID  uint64   `json:"user_id"`
-	Title   string   `json:"title"`
-	Content string   `json:"content"`
+	Title   string   `json:"title" validate:"required,max=255"`
+	Content string   `json:"content" validate:"required,max=255"`
 	Tags    []string `json:"tags"`
 }
 
@@ -24,7 +23,10 @@ func (app *application) createPostHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// TODO: Add validation for payload
+	if err := Validator.Struct(payload); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
 
 	post := &store.Post{
 		// TODO: Get user dynamically
