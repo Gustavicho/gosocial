@@ -55,7 +55,9 @@ func (app *application) createPostHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	writeJSON(w, http.StatusCreated, post)
+	if err = jsonResponse(w, http.StatusCreated, post); err != nil {
+		app.internalServerError(w, r, err)
+	}
 }
 
 func (app *application) getPostHandler(w http.ResponseWriter, r *http.Request) {
@@ -70,7 +72,9 @@ func (app *application) getPostHandler(w http.ResponseWriter, r *http.Request) {
 
 	post.Comments = coments
 
-	writeJSON(w, http.StatusOK, post)
+	if err = jsonResponse(w, http.StatusOK, post); err != nil {
+		app.internalServerError(w, r, err)
+	}
 }
 
 func (app *application) deletePostHandler(w http.ResponseWriter, r *http.Request) {
@@ -83,10 +87,11 @@ func (app *application) deletePostHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]string{
-		"status":  "deleted",
-		"message": "The post was deleted successfully",
-	})
+	if err = jsonResponse(w, http.StatusCreated, map[string]string{
+		"message": "Deleted with success!",
+	}); err != nil {
+		app.internalServerError(w, r, err)
+	}
 }
 
 func (app *application) updatePostHandler(w http.ResponseWriter, r *http.Request) {
@@ -125,7 +130,9 @@ func (app *application) updatePostHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	writeJSON(w, http.StatusOK, post)
+	if err = jsonResponse(w, http.StatusCreated, post); err != nil {
+		app.internalServerError(w, r, err)
+	}
 }
 
 func getPostFromCtx(ctx context.Context) *store.Post {
