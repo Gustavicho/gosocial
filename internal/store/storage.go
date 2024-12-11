@@ -14,6 +14,8 @@ type Store struct {
 	Posts interface {
 		GetByID(context.Context, uint64) (*Post, error)
 		Create(context.Context, *Post) error
+		Delete(context.Context, uint64) error
+		Update(context.Context, *Post) error
 	}
 	Users interface {
 		GetByID(context.Context, uint64) (*User, error)
