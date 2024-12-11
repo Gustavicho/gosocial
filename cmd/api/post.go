@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"strconv"
@@ -8,6 +9,10 @@ import (
 	"github.com/Gustavicho/gosocial/internal/store"
 	"github.com/go-chi/chi/v5"
 )
+
+type CtxKey string
+
+const PostCtxKey CtxKey = "post"
 
 type CreatePostPayload struct {
 	Title   string   `json:"title" validate:"required,max=255"`
@@ -48,30 +53,10 @@ func (app *application) createPostHandler(w http.ResponseWriter, r *http.Request
 }
 
 func (app *application) getPostHandler(w http.ResponseWriter, r *http.Request) {
-	// Get the id from the url
-	postIDParam := chi.URLParam(r, "id")
-	postID, err := strconv.ParseUint(postIDParam, 10, 64)
-	if err != nil {
-		app.badRequestResponse(w, r, err)
-		return
-	}
-
 	ctx := r.Context()
+	post := getPostFromCtx(ctx)
 
-	// Get the post
-	post, err := app.store.Posts.GetByID(ctx, postID)
-	if err != nil {
-		switch {
-		case errors.Is(err, store.ErrNotFound):
-			app.notFoundResponse(w, r, err)
-		default:
-			app.internalServerError(w, r, err)
-		}
-
-		return
-	}
-
-	coments, err := app.store.Comments.GetByPostID(ctx, postID)
+	coments, err := app.store.Comments.GetByPostID(ctx, post.ID)
 	if err != nil {
 		app.internalServerError(w, r, err)
 		return
@@ -80,4 +65,35 @@ func (app *application) getPostHandler(w http.ResponseWriter, r *http.Request) {
 	post.Comments = coments
 
 	writeJSON(w, http.StatusOK, post)
+}
+
+func getPostFromCtx(ctx context.Context) *store.Post {
+	return ctx.Value(PostCtxKey).(*store.Post)
+}
+
+func (app *application) postContextMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		postIDParam := chi.URLParam(r, "id")
+		postID, err := strconv.ParseUint(postIDParam, 10, 64)
+		if err != nil {
+			app.badRequestResponse(w, r, err)
+			return
+		}
+
+		ctx := r.Context()
+
+		post, err := app.store.Posts.GetByID(r.Context(), postID)
+		if err != nil {
+			switch {
+			case errors.Is(err, store.ErrNotFound):
+				app.notFoundResponse(w, r, err)
+			default:
+				app.internalServerError(w, r, err)
+			}
+			return
+		}
+
+		ctx = context.WithValue(ctx, PostCtxKey, post)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
 }
