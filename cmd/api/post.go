@@ -126,7 +126,12 @@ func (app *application) updatePostHandler(w http.ResponseWriter, r *http.Request
 
 	err := app.store.Posts.Update(ctx, post)
 	if err != nil {
-		app.internalServerError(w, r, err)
+		switch {
+		case errors.Is(err, store.ErrNotFound):
+			app.notFoundResponse(w, r, err)
+		default:
+			app.internalServerError(w, r, err)
+		}
 		return
 	}
 

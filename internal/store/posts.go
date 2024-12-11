@@ -17,6 +17,7 @@ type Post struct {
 	Tags      []string  `json:"tags"`
 	CreatedAt string    `json:"created_at"`
 	UpdatedAt string    `json:"updated_at"`
+	Version   uint      `json:"version"`
 	Comments  []Comment `json:"comments"`
 }
 
@@ -27,7 +28,7 @@ type PostStore struct {
 func (s *PostStore) Create(ctx context.Context, post *Post) error {
 	query := `
 	INSERT INTO posts (user_id, title, content, tags) VALUES ($1, $2, $3, $4)
-	RETURNING id, created_at, updated_at;
+	RETURNING id, created_at, updated_at, version;
 	`
 
 	err := s.db.QueryRowContext(
@@ -41,6 +42,7 @@ func (s *PostStore) Create(ctx context.Context, post *Post) error {
 		&post.ID,
 		&post.CreatedAt,
 		&post.UpdatedAt,
+		&post.Version,
 	)
 	if err != nil {
 		return err
@@ -50,8 +52,11 @@ func (s *PostStore) Create(ctx context.Context, post *Post) error {
 }
 
 func (s *PostStore) GetByID(ctx context.Context, id uint64) (*Post, error) {
+	query := `
+		SELECT * FROM posts WHERE id = $1
+	`
 	var post Post
-	err := s.db.QueryRowContext(ctx, "SELECT * FROM posts WHERE id = $1", id).Scan(
+	err := s.db.QueryRowContext(ctx, query, id).Scan(
 		&post.ID,
 		&post.UserID,
 		&post.Title,
@@ -59,6 +64,7 @@ func (s *PostStore) GetByID(ctx context.Context, id uint64) (*Post, error) {
 		pq.Array(&post.Tags),
 		&post.CreatedAt,
 		&post.UpdatedAt,
+		&post.Version,
 	)
 	if err != nil {
 		switch {
@@ -79,17 +85,29 @@ func (s *PostStore) Delete(ctx context.Context, id uint64) error {
 
 func (s *PostStore) Update(ctx context.Context, post *Post) error {
 	query := `
-	UPDATE posts SET title = $1, content = $2, tags = $3, updated_at = now() WHERE id = $4;
+	UPDATE posts SET title = $1, content = $2, tags = $3, version = version + 1, updated_at = now()
+	WHERE id = $4 AND version = $5
+	RETURNING version;
 	`
 
-	_, err := s.db.ExecContext(
+	err := s.db.QueryRowContext(
 		ctx,
 		query,
 		post.Title,
 		post.Content,
 		pq.Array(post.Tags),
 		post.ID,
+	).Scan(
+		&post.Version,
 	)
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return ErrNotFound
+		default:
+			return err
+		}
+	}
 
-	return err
+	return nil
 }
