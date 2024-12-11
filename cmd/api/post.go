@@ -20,6 +20,12 @@ type CreatePostPayload struct {
 	Tags    []string `json:"tags"`
 }
 
+type UpdatePostPayload struct {
+	Title   *string   `json:"title" validate:"omitempty,max=255"`
+	Content *string   `json:"content" validate:"omitempty,max=255"`
+	Tags    *[]string `json:"tags" validate:"omitempty"`
+}
+
 func (app *application) createPostHandler(w http.ResponseWriter, r *http.Request) {
 	var payload CreatePostPayload
 
@@ -63,6 +69,61 @@ func (app *application) getPostHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	post.Comments = coments
+
+	writeJSON(w, http.StatusOK, post)
+}
+
+func (app *application) deletePostHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	post := getPostFromCtx(ctx)
+
+	err := app.store.Posts.Delete(ctx, post.ID)
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{
+		"status":  "deleted",
+		"message": "The post was deleted successfully",
+	})
+}
+
+func (app *application) updatePostHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	post := getPostFromCtx(ctx)
+
+	var payload UpdatePostPayload
+	if err := readJSON(w, r, &payload); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	if err := Validator.Struct(payload); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	// if nil, the field will not be updated
+	// in other words. if the field is not present
+	// in the request, it will not be updated
+	if payload.Title != nil {
+		post.Title = *payload.Title
+	}
+
+	if payload.Content != nil {
+		post.Content = *payload.Content
+	}
+
+	if payload.Tags != nil {
+		post.Tags = *payload.Tags
+	}
+
+	err := app.store.Posts.Update(ctx, post)
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
 
 	writeJSON(w, http.StatusOK, post)
 }

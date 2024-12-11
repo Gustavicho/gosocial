@@ -51,9 +51,8 @@ func (app *application) mount() http.Handler {
 				r.Use(app.postContextMiddleware)
 
 				r.Get("/", app.getPostHandler)
-				// TODO: Create this endpoints
-				// r.Delete("/", app.deletePostHandler)
-				// r.Patch("/", app.updatePostHandler)
+				r.Delete("/", app.deletePostHandler)
+				r.Patch("/", app.updatePostHandler)
 			})
 		})
 	})
