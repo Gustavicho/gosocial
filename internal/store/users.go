@@ -25,6 +25,9 @@ func (s *UserStore) Create(ctx context.Context, user *User) error {
 	RETURNING id, created_at;
 	`
 
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeout)
+	defer cancel()
+
 	err := s.db.QueryRowContext(
 		ctx,
 		query,
@@ -44,6 +47,9 @@ func (s *UserStore) Create(ctx context.Context, user *User) error {
 
 func (s *UserStore) GetByID(ctx context.Context, id uint64) (*User, error) {
 	row := s.db.QueryRowContext(ctx, "SELECT * FROM users WHERE id = $1", id)
+
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeout)
+	defer cancel()
 
 	user := new(User)
 	err := row.Scan(
